@@ -36,7 +36,6 @@ class ProcessBatchJob implements ShouldQueue
      */
     public function handle()
     {
-        //Log::info("Batch job $this->batchIndex");
         $apiEndpoint = route('batch-api');
         $response = Http::get($apiEndpoint, [
             'batch_index' => $this->batchIndex,

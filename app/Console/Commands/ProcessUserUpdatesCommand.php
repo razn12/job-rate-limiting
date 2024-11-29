@@ -57,40 +57,36 @@ class ProcessUserUpdatesCommand extends Command
         $subscribers =collect($changes['batches'][0]['subscribers']);
         // total request handle batch api 50,000 and single api 3,600 = 53,600
         // Step 1: Process first 50,000 records in batches
-        $batches = $subscribers->take($this->batchLimit)->chunk(1000);
-        $this->handleBatchApi($batches);
+        $batchSubscribers = $subscribers->take($this->batchLimit);
+        $this->handleBatchApi($batchSubscribers);
 
-        // Step 2: Process remaining records individually (single api to process 3600)
-        $singleApi = $subscribers->skip($this->batchLimit)->take($this->singleApiLimit);
-        if ($singleApi->count() > 0) {
-            $this->handleSingleApi($singleApi);
-        }
+        // Step 2: Process remaining records individually (up to 3,600)
+        $remainingSubscribers = $subscribers->skip($this->batchLimit)->take($this->singleApiLimit);
+        $this->handleSingleApi($remainingSubscribers);
+
+        $this->info("Processing completed.");
 
     }
 
-    private function handleBatchApi(Collection $batches)
+    private function handleBatchApi(Collection $subscribers): void
     {
-        foreach ($batches as $index => $batch) {
-
-            // Dispatch the job
+        $subscribers->chunk(1000)->each(function (Collection $batch, $index) {
             ProcessBatchJob::dispatch($index, $batch);
 
             $this->info("Batch $index dispatched successfully.");
-        }
-
+        });
     }
 
-    private function handleSingleApi(Collection $subscribers)
+    private function handleSingleApi(Collection $subscribers): void
     {
-        foreach ($subscribers as $index => $subscriber) {
-            // memory management OK
-
-            // Dispatch the job
+        $subscribers->each(function ($subscriber, $index) {
             ProcessSingleApiJob::dispatch($index, collect($subscriber));
+            $this->info("[{$index}] Email: {$subscriber['email']}, Timezone: '{$subscriber['time_zone']}'");
 
-            $this->info("Batch $index dispatched successfully.");
-        }
+            unset($subscriber); // Free memory for this subscriber
+        });
 
+        gc_collect_cycles(); // Explicit garbage collection for memory cleanup
     }
 
 

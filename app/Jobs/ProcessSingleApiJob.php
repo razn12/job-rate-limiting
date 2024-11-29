@@ -11,7 +11,6 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\RateLimiter;
 
 class ProcessSingleApiJob implements ShouldQueue
 {
@@ -35,8 +34,6 @@ class ProcessSingleApiJob implements ShouldQueue
      */
     public function handle()
     {
-
-        Log::info("Batch job $this->subscriberIndex");
         $apiEndpoint = route('single-api');
         $response = Http::get($apiEndpoint, [
             'index' => $this->subscriberIndex,
